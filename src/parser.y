@@ -47,6 +47,28 @@
 #include <iostream>
 #include <stack>
 #include <map>
+#include <unordered_map>
+
+#define BCC_ERR(message)  std::cerr << "Error: " << message << std::endl
+#define BCC_WARN(message) std::cerr << "Warning: " << message << std::endl
+
+#define BCC_RESET       "\033[0m"
+#define BCC_BLACK       "\033[30m"
+#define BCC_RED         "\033[31m"
+#define BCC_GREEN       "\033[32m"
+#define BCC_YELLOW      "\033[33m"
+#define BCC_BLUE        "\033[34m"
+#define BCC_MAGENTA     "\033[35m"
+#define BCC_CYAN        "\033[36m"
+#define BCC_WHITE       "\033[37m"
+#define BCC_BOLDBLACK   "\033[1m\033[30m"
+#define BCC_BOLDRED     "\033[1m\033[31m"
+#define BCC_BOLDGREEN   "\033[1m\033[32m"
+#define BCC_BOLDYELLOW  "\033[1m\033[33m"
+#define BCC_BOLDBLUE    "\033[1m\033[34m"
+#define BCC_BOLDMAGENTA "\033[1m\033[35m"
+#define BCC_BOLDCYAN    "\033[1m\033[36m"
+#define BCC_BOLDWHITE   "\033[1m\033[37m"
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -1984,6 +2006,20 @@ extern LexerData g;
 
 extern const char* contextNameFromState(int ctx);
 
+#include "/usr/include/unistd.h"
+
+template <class T1, class T2>
+inline bool in_map(T1& map, const T2& object) {
+  return map.find(object) != map.end();
+}
+
+static bool cached_isatty(int fd) {
+  static std::unordered_map<int, signed char> out_tty;
+  if (!in_map(out_tty, fd))
+    out_tty[fd] = isatty(fd);
+  return out_tty[fd];
+}
+
 /**
  * yyparser() invokes this function when it encounters unexpected token.
  */
@@ -2020,15 +2056,20 @@ void yyerror_detailed  (  char* text,
   char spacechars[1024] = {0}; // For printing enough whitespace chars so that we can show a ^ below the start of unexpected token.
   for(const char* p = lineStart; p < errt_posn; ++p)
     spacechars[p-lineStart] = *p == '\t' ? '\t' : ' ';
-  char errmsg[1024];
-  sprintf(errmsg, "Error: Unexpected token '%s', while in context=%s(%d), found at line#%d\n"
-    "%s\n"   // Line that contains the error.
-    "%s^\n",  // A ^ below the beginning of unexpected token.
-    errt_posn, contextNameFromState(getLexerContext()), getLexerContext(), g.mLineNo, // The error message
-    lineStart,
-    spacechars);
-
-  printf("%s", errmsg);
+  char errmsg[2048];
+  if (cached_isatty(STDERR_FILENO)) {
+    BCC_ERR("Unexpected token \"" << errt_posn << "\" at " BCC_BOLDWHITE "[(" BCC_BOLDGREEN "context:" BCC_BOLDWHITE << get_context() << ")" BCC_BOLDRED "@" BCC_BOLDWHITE "(" BCC_BOLDBLUE "line:" BCC_BOLDWHITE << gLineNo << ")]" BCC_RESET);
+    sprintf(errmsg, "%s%c%s%s",
+      lineStart, '\n',    // Line that contains the error.
+      spacechars, BCC_BOLDWHITE "^\n" BCC_RESET);  // A ^ below the beginning of unexpected token.
+  } else {
+    BCC_ERR("Unexpected token \"" << errt_posn << "\" at [(context:" << get_context() << ")@(line:" << gLineNo << ")]");
+    sprintf(errmsg, "%s%c%s%s",
+      lineStart, '\n',    // Line that contains the error.
+      spacechars, "^\n");  // A ^ below the beginning of unexpected token.
+  }
+  
+  fprintf(stderr, "%s", errmsg);
   // Replace back the end char
   if(endReplaceChar)
     *lineEnd = endReplaceChar;
