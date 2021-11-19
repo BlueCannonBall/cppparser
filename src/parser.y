@@ -49,8 +49,8 @@
 #include <map>
 #include <unordered_map>
 
-#define BCC_ERR(message)  std::cerr << "Error: " << message << std::endl
-#define BCC_WARN(message) std::cerr << "Warning: " << message << std::endl
+#define BCC_ERR(message)  std::cerr << (cached_isatty(STDERR_FILENO) ? BCC_BOLDRED "Error: " BCC_RESET : "Error: ")  << message << std::endl
+#define BCC_WARN(message) std::cerr << (cached_isatty(STDERR_FILENO) ? BCC_BOLDYELLOW "Warning: " BCC_RESET : "Warning: ") << message << std::endl
 
 #define BCC_RESET       "\033[0m"
 #define BCC_BLACK       "\033[30m"
@@ -2058,12 +2058,12 @@ void yyerror_detailed  (  char* text,
     spacechars[p-lineStart] = *p == '\t' ? '\t' : ' ';
   char errmsg[2048];
   if (cached_isatty(STDERR_FILENO)) {
-    BCC_ERR("Unexpected token \"" << errt_posn << "\" at " BCC_BOLDWHITE "[(" BCC_BOLDGREEN "context:" BCC_BOLDWHITE << get_context() << ")" BCC_BOLDRED "@" BCC_BOLDWHITE "(" BCC_BOLDBLUE "line:" BCC_BOLDWHITE << gLineNo << ")]" BCC_RESET);
+    BCC_ERR("Unexpected token \"" << errt_posn << "\" at " BCC_BOLDWHITE "[(" BCC_BOLDGREEN "context:" BCC_BOLDWHITE << getLexerContext() << ")@(" BCC_BOLDBLUE "line:" BCC_BOLDWHITE << g.mLineNo << ")]" BCC_RESET);
     sprintf(errmsg, "%s%c%s%s",
       lineStart, '\n',    // Line that contains the error.
       spacechars, BCC_BOLDWHITE "^\n" BCC_RESET);  // A ^ below the beginning of unexpected token.
   } else {
-    BCC_ERR("Unexpected token \"" << errt_posn << "\" at [(context:" << get_context() << ")@(line:" << gLineNo << ")]");
+    BCC_ERR("Unexpected token \"" << errt_posn << "\" at [(context:" << getLexerContext() << ")@(line:" << g.mLineNo << ")]");
     sprintf(errmsg, "%s%c%s%s",
       lineStart, '\n',    // Line that contains the error.
       spacechars, "^\n");  // A ^ below the beginning of unexpected token.
